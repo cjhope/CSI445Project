@@ -29,6 +29,8 @@ public class SemanticTest {
 		String outputFilePath = "/Users/cjh/SUNY/CSI445_DMS/text_analysis/results/resultFile";
 		File folder = new File(inputFilePath); 
 		File[] listOfFiles = folder.listFiles(); 
+		SemanticTest aggregate = new SemanticTest();
+		
 		
 		//Create array the size of the number of input files
 		SemanticTest[] collection = new SemanticTest[listOfFiles.length];
@@ -47,9 +49,13 @@ public class SemanticTest {
 		
 		//Handles writing the wordLists to file
 		for(int i = 0; i < collection.length; i++){
-			File fout = new File(outputFilePath + (i+1) + ".txt");
+			File fout = new File(outputFilePath + (i+1) + ".csv");
 			collection[i].writeWordListToFile(fout);
 		}//end for
+		
+		aggregate.wordList = Combiner.combineWordLists(collection);
+		aggregate.writeWordListToFile(new File(outputFilePath + "Aggregation.csv"));
+	
 		
 	}//end main
 	
@@ -110,10 +116,11 @@ public class SemanticTest {
 		Iterator<Map.Entry<String, Pair>> it = this.wordList.entrySet().iterator();
 		Map.Entry<String, Pair> value;
 		String s;
+		bWriter.write("WordID" + ',' + "PartOfSpeech" + ',' + "Count");
 		while(it.hasNext()){
 			value = it.next();
-			s = String.format("%-20s\t%5s\t%5d", value.getKey(), value.getValue().partOfSpeech, value.getValue().count);
-			bWriter.write(s + "\n");
+			//s = String.format("%-20s,%5s,%5d", value.getKey(), value.getValue().partOfSpeech, value.getValue().count);
+			bWriter.write(value.getKey()+','+value.getValue().partOfSpeech+','+value.getValue().count + "\n");
 		}
 		bWriter.flush();
 		bWriter.close();
