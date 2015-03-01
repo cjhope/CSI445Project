@@ -21,19 +21,22 @@ import java.util.Iterator;
  */
 public class SemanticTest {
 	Hashtable<String, Pair> wordList = new Hashtable<String, Pair>();
+	Hashtable<String, ProbIdent> probability = new Hashtable<String, ProbIdent>();
 	
 
 	public static void main(String [] args) throws IOException{
-		BufferedWriter bWriter;
-		String inputFilePath = "/Users/cjh/SUNY/CSI445_DMS/text_analysis/data/formattedData/";
-		String outputFilePath = "/Users/cjh/SUNY/CSI445_DMS/text_analysis/results/resultFile";
-		File folder = new File(inputFilePath); 
-		File[] listOfFiles = folder.listFiles(); 
-		SemanticTest aggregate = new SemanticTest();
+		String inputFilePath = "/Users/cjh/SUNY/CSI445_DMS/text_analysis/data/formattedData/"; //set up to use absolute path name
+		String outputFilePath = "/Users/cjh/SUNY/CSI445_DMS/text_analysis/results/resultFile"; //set up to use absolute path name
+		String probDiffFilePath = "/Users/cjh/SUNY/CSI445_DMS/text_analysis/results/probDifference"; //set up to use absolute path name
+		File folder = new File(inputFilePath);  //gets the folder name
+		File[] listOfFiles = folder.listFiles();  //gets all files in the specified folder
+		SemanticTest aggregate = new SemanticTest(); //creates the aggregated SemanticTest object
 		
 		
 		//Create array the size of the number of input files
 		SemanticTest[] collection = new SemanticTest[listOfFiles.length];
+		
+		System.out.println("Beginning collation of word frequency data...");
 		
 		//Iterate over all the files in the folder, create a SemanticTest object for each file
 		//Passes the input file to createHashTable, which sets the hashTable for each SemanticTest object
@@ -44,20 +47,37 @@ public class SemanticTest {
 			} catch (Exception e){
 				System.err.println("Error in main function on iteration " + (i+1));
 				e.printStackTrace();
-			}
-		}
+			}//end try-catch
+		}//end for - all individual SemanticTest objects created and populated
+		
+		System.out.println("Updating raw probability data for writing to individual files...");
 		
 		//Handles writing the wordLists to file
 		for(int i = 0; i < collection.length; i++){
+			NaiveBayesClassifier.updateProbability(collection[i]);
 			File fout = new File(outputFilePath + (i+1) + ".txt");
 			collection[i].writeWordListToFile(fout);
-		}//end for
+		}//end for - probabilities set in individual SemanticTest objects and data written to individual files
 		
+		System.out.println("Aggregating data...");
+		
+		//Combines the computed files into an aggregated hashtable
 		aggregate.wordList = Combiner.combineWordLists(collection);
+		//Updates the raw probability for the aggregated hashtable
 		NaiveBayesClassifier.updateProbability(aggregate);
+		
+		System.out.println("Writing aggregated data to file...");
+		//Writes aggregated data to file
 		aggregate.writeWordListToFile(new File(outputFilePath + "Aggregation.txt"));
 		
-	
+		System.out.println("Writing probability differences to file...");
+		for(int i = 0; i < collection.length; i++){
+			File pointer = new File(probDiffFilePath + (i+1) + ".txt");
+			collection[i].probability = NaiveBayesClassifier.findProbabilityDiscrepencies(aggregate, collection[i], 0.01);
+			collection[i].writeProbDiffToFile(pointer);
+		}//end for
+		
+		System.out.println("Task complete. Exiting...");
 		
 	}//end main
 	
@@ -129,11 +149,26 @@ public class SemanticTest {
 		
 	}//end writeWordListToFile method
 	
+	void writeProbDiffToFile(File fout) throws IOException{
+		BufferedWriter bWriter = new BufferedWriter(new FileWriter(fout));
+		Iterator<Map.Entry<String, ProbIdent>> it = this.probability.entrySet().iterator();
+		Map.Entry<String, ProbIdent> value;
+		String s = String.format("%-20s\t%5s\t%10s", "WordID", "POS", "Prob Diff");
+		bWriter.write(s + "\n");
+		while(it.hasNext()){
+			value = it.next();
+			s = String.format("%-20s\t%5s%1.9f", value.getKey(), value.getValue().partOfSpeech, value.getValue().probDifferential);
+			bWriter.write(s + "\n");
+		}//end while
+		bWriter.flush();
+		bWriter.close();
+	}//end writeProbDiffToFile method
+	
 	/**
 	 * Constructs the SemanticTest object
 	 * @param hTable Sets the value of wordList Hashtable
 	 */
-	public SemanticTest(Hashtable hTable){
+	public SemanticTest(Hashtable<String, Pair> hTable){
 		this.wordList = hTable;
 	}//end constructor
 	
@@ -143,7 +178,7 @@ public class SemanticTest {
 	public SemanticTest(){
 		this.wordList = null;
 	}
-}//end class
+}//end SemanticTest class
 
 /**
  * Sets up a custom class to populate the value side of the Hashtable
@@ -171,3 +206,14 @@ class Pair{
 	}//end constructor
 	
 }//end pair class
+
+class ProbIdent{
+	String partOfSpeech;
+	double probDifferential;
+	
+	public ProbIdent(String partOfSpeech, double probDiff){
+		this.partOfSpeech = partOfSpeech;
+		this.probDifferential= probDiff;
+	}//end constructor
+	
+}//end class
