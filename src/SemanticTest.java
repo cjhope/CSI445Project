@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Map;
 import java.util.Iterator;
@@ -22,6 +23,7 @@ import java.util.Iterator;
 public class SemanticTest {
 	Hashtable<String, Pair> wordList = new Hashtable<String, Pair>();
 	Hashtable<String, ProbIdent> probability = new Hashtable<String, ProbIdent>();
+	static HashSet<String> dictionary = new HashSet<String>();
 	
 
 	public static void main(String [] args) throws IOException{
@@ -70,6 +72,12 @@ public class SemanticTest {
 		//Writes aggregated data to file
 		aggregate.writeWordListToFile(new File(outputFilePath + "Aggregation.txt"));
 		
+		
+		//Computes probability to data and writes to file
+		//The probability Hashtable for each SemanticTest object is a subset of the wordList Hashtable
+		//that only contains words that occur with a higher probability in the individual SemanticTest object
+		//than in the aggregated dataset, with the threshold being set by the passed epsilonValue in the 
+		//NaiveBayesClassifier.findProbabilityDiscrepencies method
 		System.out.println("Writing probability differences to file...");
 		for(int i = 0; i < collection.length; i++){
 			File pointer = new File(probDiffFilePath + (i+1) + ".txt");
@@ -77,7 +85,14 @@ public class SemanticTest {
 			collection[i].writeProbDiffToFile(pointer);
 		}//end for
 		
+		//Build the dictionary
+		Combiner.buildDictionary(collection);
+		
+		//Write the dictionary to file
+		writeDictionary(new File("/Users/cjh/SUNY/CSI445_DMS/text_analysis/results/Dictionary.txt"));
+		
 		System.out.println("Task complete. Exiting...");
+		return;
 		
 	}//end main
 	
@@ -163,6 +178,22 @@ public class SemanticTest {
 		bWriter.flush();
 		bWriter.close();
 	}//end writeProbDiffToFile method
+	
+	
+	/**
+	 * Writes the contents of the calculated dictionary to the file passed by fout parameter
+	 * @param fout
+	 * @throws IOException
+	 */
+	static void writeDictionary(File fout) throws IOException{
+		BufferedWriter bWriter = new BufferedWriter(new FileWriter(fout));
+		System.out.println(dictionary.size());
+		for( String s : dictionary){
+			bWriter.write(s + "\n");
+		}
+		bWriter.flush();
+		bWriter.close();
+	}//end writeDictionary method
 	
 	/**
 	 * Constructs the SemanticTest object

@@ -33,7 +33,7 @@ public class Combiner{
 				Map.Entry<String, Pair> value = it.next();
 				if(aggregate.containsKey(value.getKey())){
 					Pair p = value.getValue();
-					p.count++;
+					p.count+= aggregate.get(value.getKey()).count;
 					aggregate.put(value.getKey(), p);
 				} else {
 					Pair p = new Pair(value.getValue().partOfSpeech, value.getValue().count);
@@ -45,5 +45,23 @@ public class Combiner{
 		
 		return aggregate;
 	}//end combineWordLists method
+	
+	
+	/**
+	 * Takes the words with outlier probabilities in each dataset and uses them to
+	 * formulate a dictionary of target words
+	 * 
+	 * @param probLists - the collection of SemanticTest objects to be evaluated
+	 */
+	static void buildDictionary(SemanticTest[] probLists){
+		for(int i = 0; i < probLists.length; i++){
+			Iterator<Map.Entry<String, ProbIdent>> it = probLists[i].probability.entrySet().iterator();
+			while(it.hasNext()){
+				Map.Entry<String, ProbIdent> value = it.next();
+				if(!SemanticTest.dictionary.contains(value.getKey()))
+					SemanticTest.dictionary.add(value.getKey());
+			}
+		}//end for
+	}//end buildDictionary method
 	
 }//end class
