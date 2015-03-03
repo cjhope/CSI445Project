@@ -1,6 +1,7 @@
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -15,7 +16,6 @@ import java.util.Iterator;
  * 
  * Once the hashtable is created, a txt file is created for each input file and placed in the results directory
  * 
- * @throws IOException
  * 
  * @author cjh
  *
@@ -24,6 +24,7 @@ public class SemanticTest {
 	Hashtable<String, Pair> wordList = new Hashtable<String, Pair>();
 	Hashtable<String, ProbIdent> probability = new Hashtable<String, ProbIdent>();
 	static HashSet<String> dictionary = new HashSet<String>();
+	File fileInPointer;
 	
 
 	public static void main(String [] args) throws IOException{
@@ -38,18 +39,15 @@ public class SemanticTest {
 		//Create array the size of the number of input files
 		SemanticTest[] collection = new SemanticTest[listOfFiles.length];
 		
+		//Assign the appropriate files to the appropriate SemanticTest object, to allow for threading
+		for(int i = 0; i < listOfFiles.length; i++)
+			collection[i] = new SemanticTest(listOfFiles[i]);
+			
 		System.out.println("Beginning collation of word frequency data...");
 		
-		//Iterate over all the files in the folder, create a SemanticTest object for each file
-		//Passes the input file to createHashTable, which sets the hashTable for each SemanticTest object
-		for(int i = 0; i < listOfFiles.length; i++){
-			collection[i] = new SemanticTest();
-			try{
-			collection[i].createHashtable(listOfFiles[i]);
-			} catch (Exception e){
-				System.err.println("Error in main function on iteration " + (i+1));
-				e.printStackTrace();
-			}//end try-catch
+		//Iterate over all the files in the folder calling the createHashTable method on each object
+		for(final SemanticTest builder: collection){
+				builder.createHashtable();
 		}//end for - all individual SemanticTest objects created and populated
 		
 		System.out.println("Updating raw probability data for writing to individual files...");
@@ -101,13 +99,14 @@ public class SemanticTest {
 	 * createHashTable sets the value of the SemanticTest object's hash table based on passed files
 	 * @param fin
 	 * @return
+	 * @throws FileNotFoundException 
 	 * @throws IOException 
 	 */
-	void createHashtable(File fin) throws IOException{
+	void createHashtable() throws FileNotFoundException{
 		String line; //holds each line of the input
 		String[] lineElements; //holds the parsed values of line
 		Hashtable<String, Pair> hTable = new Hashtable<String, Pair>(); //the Hashtable that will populate this.wordList
-		BufferedReader bReader = new BufferedReader(new FileReader(fin));
+		BufferedReader bReader = new BufferedReader(new FileReader(this.fileInPointer));
 
 		//Prime buffered reader
 		try{
@@ -187,7 +186,7 @@ public class SemanticTest {
 	 */
 	static void writeDictionary(File fout) throws IOException{
 		BufferedWriter bWriter = new BufferedWriter(new FileWriter(fout));
-		System.out.println(dictionary.size());
+		//System.out.println(dictionary.size());
 		for( String s : dictionary){
 			bWriter.write(s + "\n");
 		}
@@ -208,6 +207,10 @@ public class SemanticTest {
 	 */
 	public SemanticTest(){
 		this.wordList = null;
+	}
+	
+	public SemanticTest(File fin){
+		this.fileInPointer = fin;
 	}
 }//end SemanticTest class
 
