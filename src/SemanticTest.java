@@ -9,6 +9,9 @@ import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Map;
 import java.util.Iterator;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * The SemanticTest class reads all formatted text files in a directory (generated using the TreeTagger program) and
@@ -27,7 +30,7 @@ public class SemanticTest {
 	File fileInPointer;
 	
 
-	public static void main(String [] args) throws IOException{
+	public static void main(String [] args) throws IOException, InterruptedException{
 		String inputFilePath = "/Users/cjh/SUNY/CSI445_DMS/text_analysis/data/formattedData/"; //set up to use absolute path name
 		String outputFilePath = "/Users/cjh/SUNY/CSI445_DMS/text_analysis/results/resultFile"; //set up to use absolute path name
 		String probDiffFilePath = "/Users/cjh/SUNY/CSI445_DMS/text_analysis/results/probDifference"; //set up to use absolute path name
@@ -45,10 +48,32 @@ public class SemanticTest {
 			
 		System.out.println("Beginning collation of word frequency data...");
 		
+		
+		System.out.println("Parsing Hashtable creation to threads...");
+		
 		//Iterate over all the files in the folder calling the createHashTable method on each object
-		for(final SemanticTest builder: collection){
-				builder.createHashtable();
-		}//end for - all individual SemanticTest objects created and populated
+		//and assigning each task to a separate thread. The ExecutorService object will cache each thread
+		//and monitor when it is complete.  The threading service will wait until all threads have completed
+		// (or 1 minute - whichever comes first) before moving on to the next set of tasks.  This is an essential
+		//step taken to ensure the results are deterministic
+		ExecutorService es = Executors.newCachedThreadPool();
+		for(int i = 0; i < listOfFiles.length; i++){
+				for(final SemanticTest builder: collection){
+						es.execute(new Runnable(){
+							public void run (){
+								try {
+									builder.createHashtable();
+								} catch (FileNotFoundException e) {
+									e.printStackTrace();
+								}
+							}
+						});
+					}//end for - all individual SemanticTest objects created and populated
+		}//end for -- executor service done queuing threads
+		es.shutdown(); //prevent additional threads from being queued
+		es.awaitTermination(1, TimeUnit.MINUTES); //Wait for 1 minute, or until all threads have completed
+		
+		
 		
 		System.out.println("Updating raw probability data for writing to individual files...");
 		
