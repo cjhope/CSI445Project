@@ -38,6 +38,18 @@ public class SemanticTest {
 		File[] listOfFiles = folder.listFiles();  //gets all files in the specified folder
 		SemanticTest aggregate = new SemanticTest(); //creates the aggregated SemanticTest object
 		
+		//Runs the script from the command line to generate the formatted text files
+		System.out.println("Generating formatted TreeTagger files from input text fies...");
+		String[] bashCommand = {"/bin/bash", "/Users/cjh/SUNY/CSI445_DMS/text_analysis/scriptTreeTagger.sh"};
+		Process p;
+		try{
+			p = Runtime.getRuntime().exec(bashCommand);
+			p.waitFor();
+		}catch(Exception e){
+			System.err.println("Problem with my script stuff");
+		}
+		// end script call - formatted text files completed
+		
 		
 		//Create array the size of the number of input files
 		SemanticTest[] collection = new SemanticTest[listOfFiles.length];
