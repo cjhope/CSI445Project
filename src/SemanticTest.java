@@ -24,32 +24,48 @@ import java.util.concurrent.TimeUnit;
  *
  */
 public class SemanticTest {
-	Hashtable<String, Pair> wordList = new Hashtable<String, Pair>();
+	Hashtable<String, FileInformation> wordList = new Hashtable<String, FileInformation>();
 	Hashtable<String, ProbIdent> probability = new Hashtable<String, ProbIdent>();
 	static HashSet<String> dictionary = new HashSet<String>();
 	File fileInPointer;
 	
 
 	public static void main(String [] args) throws IOException, InterruptedException{
-		String inputFilePath = "/Users/cjh/SUNY/CSI445_DMS/text_analysis/data/formattedData/"; //set up to use absolute path name
-		String outputFilePath = "/Users/cjh/SUNY/CSI445_DMS/text_analysis/results/resultFile"; //set up to use absolute path name
-		String probDiffFilePath = "/Users/cjh/SUNY/CSI445_DMS/text_analysis/results/probDifference"; //set up to use absolute path name
-		File folder = new File(inputFilePath);  //gets the folder name
-		File[] listOfFiles = folder.listFiles();  //gets all files in the specified folder
-		SemanticTest aggregate = new SemanticTest(); //creates the aggregated SemanticTest object
+		final String dir = System.getProperty("user.dir"); //get path of current directory - allows code to be ported to different computers
+		String inputFilePath = dir + "/data/formattedData/"; //set up to use absolute path name
+		String outputFilePath = dir + "/data/results/resultFile"; //set up to use absolute path name
+		String probDiffFilePath = dir + "/data/results/probAnalysis"; //set up to use absolute path name
+		SemanticTest aggregatedFiles = new SemanticTest(); //creates the aggregatedFilesd SemanticTest object
+		
+		//System.out.println(dir);
+		
+
+		
+	
 		
 		//Runs the script from the command line to generate the formatted text files
+		//IMPORTANT - IF RUNNING THIS SCRIPT IN WINDOWS OS DISABLE THIS SECTION AND MANUALLY
+		//RUN THE TREE-TAGGER PROGRAM ON YOUR SAMPLE DATA
 		System.out.println("Generating formatted TreeTagger files from input text fies...");
-		String[] bashCommand = {"/bin/bash", "/Users/cjh/SUNY/CSI445_DMS/text_analysis/scriptTreeTagger.sh"};
+		String[] bashCommand = {"/bin/bash", dir + "/scriptTreeTagger.sh"};
 		Process p;
 		try{
 			p = Runtime.getRuntime().exec(bashCommand);
 			p.waitFor();
 		}catch(Exception e){
-			System.err.println("Problem with my script stuff");
+			System.err.println("Script failed to execute. Critical error, program terminated");
+			return;
 		}
-		// end script call - formatted text files completed
+		// end script call - formatted text files prepped for processing
 		
+		File folder = new File(inputFilePath);  //gets the folder name
+		//Checks if the folder exists - if not exits program, because there isn't data to analyze
+		if(!folder.exists()){
+			System.err.println("No input files to analyze. Critical error: exiting.");
+			return;
+		}//end if
+		//Folder exists, so get all files in it
+		File[] listOfFiles = folder.listFiles();  //gets all files in the data folder
 		
 		//Create array the size of the number of input files
 		SemanticTest[] collection = new SemanticTest[listOfFiles.length];
@@ -59,14 +75,12 @@ public class SemanticTest {
 			collection[i] = new SemanticTest(listOfFiles[i]);
 			
 		System.out.println("Beginning collation of word frequency data...");
-		
-		
 		System.out.println("Parsing Hashtable creation to threads...");
 		
 		//Iterate over all the files in the folder calling the createHashTable method on each object
-		//and assigning each task to a separate thread. The ExecutorService object will cache each thread
+		//and assign each task to a separate thread. The ExecutorService object will cache each thread
 		//and monitor when it is complete.  The threading service will wait until all threads have completed
-		// (or 1 minute - whichever comes first) before moving on to the next set of tasks.  This is an essential
+		//(or 1 minute - whichever comes first) before moving on to the next set of tasks.  Waiting is an essential
 		//step taken to ensure the results are deterministic
 		ExecutorService es = Executors.newCachedThreadPool();
 		for(int i = 0; i < listOfFiles.length; i++){
@@ -80,12 +94,10 @@ public class SemanticTest {
 								}
 							}
 						});
-					}//end for - all individual SemanticTest objects created and populated
+					}//end for -- all individual SemanticTest object Hashtables created and populated
 		}//end for -- executor service done queuing threads
 		es.shutdown(); //prevent additional threads from being queued
 		es.awaitTermination(1, TimeUnit.MINUTES); //Wait for 1 minute, or until all threads have completed
-		
-		
 		
 		System.out.println("Updating raw probability data for writing to individual files...");
 		
@@ -98,25 +110,25 @@ public class SemanticTest {
 		
 		System.out.println("Aggregating data...");
 		
-		//Combines the computed files into an aggregated hashtable
-		aggregate.wordList = Combiner.combineWordLists(collection);
-		//Updates the raw probability for the aggregated hashtable
-		NaiveBayesClassifier.updateProbability(aggregate);
+		//Combines the computed files into an aggregatedFilesd hashtable
+		aggregatedFiles.wordList = Combiner.combineWordLists(collection);
+		//Updates the raw probability for the aggregatedFilesd hashtable
+		NaiveBayesClassifier.updateProbability(aggregatedFiles);
 		
-		System.out.println("Writing aggregated data to file...");
-		//Writes aggregated data to file
-		aggregate.writeWordListToFile(new File(outputFilePath + "Aggregation.txt"));
+		System.out.println("Writing aggregatedFiles ...");
+		//Writes aggregatedFilesd data to file
+		aggregatedFiles.writeWordListToFile(new File(outputFilePath + "Aggregation.txt"));
 		
 		
 		//Computes probability to data and writes to file
 		//The probability Hashtable for each SemanticTest object is a subset of the wordList Hashtable
 		//that only contains words that occur with a higher probability in the individual SemanticTest object
-		//than in the aggregated dataset, with the threshold being set by the passed epsilonValue in the 
+		//than in the aggregatedFilesd dataset, with the threshold being set by the passed epsilonValue in the 
 		//NaiveBayesClassifier.findProbabilityDiscrepencies method
 		System.out.println("Writing probability differences to file...");
 		for(int i = 0; i < collection.length; i++){
 			File pointer = new File(probDiffFilePath + (i+1) + ".txt");
-			collection[i].probability = NaiveBayesClassifier.findProbabilityDiscrepencies(aggregate, collection[i], 0.01);
+			collection[i].probability = NaiveBayesClassifier.findProbabilityDiscrepencies(aggregatedFiles, collection[i], 0.01);
 			collection[i].writeProbDiffToFile(pointer);
 		}//end for
 		
@@ -142,7 +154,7 @@ public class SemanticTest {
 	void createHashtable() throws FileNotFoundException{
 		String line; //holds each line of the input
 		String[] lineElements; //holds the parsed values of line
-		Hashtable<String, Pair> hTable = new Hashtable<String, Pair>(); //the Hashtable that will populate this.wordList
+		Hashtable<String, FileInformation> hTable = new Hashtable<String, FileInformation>(); //the Hashtable that will populate this.wordList
 		BufferedReader bReader = new BufferedReader(new FileReader(this.fileInPointer));
 
 		//Prime buffered reader
@@ -154,12 +166,12 @@ public class SemanticTest {
 			
 			//Checks if the word is already in the hash table, if so adds one to the count
 			if(hTable.containsKey(lineElements[2])){
-				Pair p = hTable.get(lineElements[2]);
+				FileInformation p = hTable.get(lineElements[2]);
 				p.count++;
 				hTable.put(lineElements[2], p);
 			}else{
 				//If the current word is not in the hash table, add it
-				Pair p = new Pair(lineElements[1], 1);
+				FileInformation p = new FileInformation(lineElements[1], 1);
 				hTable.put(lineElements[2], p);
 			}
 			line = bReader.readLine();
@@ -186,8 +198,8 @@ public class SemanticTest {
 	 */
 	void writeWordListToFile(File fout) throws IOException{
 		BufferedWriter bWriter = new BufferedWriter(new FileWriter(fout));
-		Iterator<Map.Entry<String, Pair>> it = this.wordList.entrySet().iterator();
-		Map.Entry<String, Pair> value;
+		Iterator<Map.Entry<String, FileInformation>> it = this.wordList.entrySet().iterator();
+		Map.Entry<String, FileInformation> value;
 		String s = String.format("%-20s\t%5s\t%7s\t%9s", "WordID", "POS", "Count", "Prob");
 		bWriter.write(s + "\n");
 		while(it.hasNext()){
@@ -235,7 +247,7 @@ public class SemanticTest {
 	 * Constructs the SemanticTest object
 	 * @param hTable Sets the value of wordList Hashtable
 	 */
-	public SemanticTest(Hashtable<String, Pair> hTable){
+	public SemanticTest(Hashtable<String, FileInformation> hTable){
 		this.wordList = hTable;
 	}//end constructor
 	
@@ -259,7 +271,7 @@ public class SemanticTest {
  * @author cjh
  *
  */
-class Pair{
+class FileInformation{
 	
 	int count; //count of how many times the word has appeared
 	String partOfSpeech; //describes the part of speech
@@ -271,7 +283,7 @@ class Pair{
 	 * @param partOfSpeech
 	 * @param x
 	 */
-	public Pair(String partOfSpeech, int x){
+	public FileInformation(String partOfSpeech, int x){
 		this.partOfSpeech = partOfSpeech;
 		this.count = x;
 	}//end constructor

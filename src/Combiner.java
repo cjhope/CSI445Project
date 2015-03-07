@@ -3,8 +3,8 @@ import java.util.Map;
 import java.util.Hashtable;
 
 /**
- * Designed to aggregate the set of SemanticTest objects created in the SemanticTest program
- * to a single hashtable, with the total frequency of each word stored in Pair
+ * Designed to aggregatedFiles the set of SemanticTest objects created in the SemanticTest program
+ * to a single hashtable, with the total frequency of each word stored in FileInformation
  * 
  * @author cjh
  *
@@ -16,12 +16,12 @@ public class Combiner{
 	 * and combines them into one hashtable
 	 * 
 	 * @param wordLists - An array of SemanticTest objects
-	 * @return hTable - the hashtable that contains the aggregated statistics of all hashtables in the set of 
+	 * @return hTable - the hashtable that contains the aggregatedFilesd statistics of all hashtables in the set of 
 	 * 					SemanticTest objects
 	 */
-	static Hashtable<String, Pair> combineWordLists(SemanticTest[] wordLists){
-		Hashtable<String, Pair> aggregate = new Hashtable<String, Pair>();
-		Iterator<Map.Entry<String, Pair>> it;
+	static Hashtable<String, FileInformation> combineWordLists(SemanticTest[] wordLists){
+		Hashtable<String, FileInformation> aggregatedFiles = new Hashtable<String, FileInformation>();
+		Iterator<Map.Entry<String, FileInformation>> it;
 		
 		//cover all the wordLists in wordLists
 		for(int i = 0; i < wordLists.length; i++){
@@ -30,20 +30,20 @@ public class Combiner{
 			
 			//Checks if the current wordList has additional values, while it does, continues updating
 			while(it.hasNext()){
-				Map.Entry<String, Pair> value = it.next();
-				if(aggregate.containsKey(value.getKey())){
-					Pair p = value.getValue();
-					p.count+= aggregate.get(value.getKey()).count;
-					aggregate.put(value.getKey(), p);
+				Map.Entry<String, FileInformation> value = it.next();
+				if(aggregatedFiles.containsKey(value.getKey())){
+					FileInformation p = value.getValue();
+					p.count+= aggregatedFiles.get(value.getKey()).count;
+					aggregatedFiles.put(value.getKey(), p);
 				} else {
-					Pair p = new Pair(value.getValue().partOfSpeech, value.getValue().count);
-					aggregate.put(value.getKey(), p);
+					FileInformation p = new FileInformation(value.getValue().partOfSpeech, value.getValue().count);
+					aggregatedFiles.put(value.getKey(), p);
 				}//end else
 			}//end while
 			
 		}//end for
 		
-		return aggregate;
+		return aggregatedFiles;
 	}//end combineWordLists method
 	
 	

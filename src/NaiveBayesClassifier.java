@@ -12,16 +12,16 @@ public class NaiveBayesClassifier {
 	
 	static int totalWordCount = 0; //initiate total word count
 	/**
-	 * Updates the raw probability field in each Pair kept in a passed Hashtable
+	 * Updates the raw probability field in each FileInformation kept in a passed Hashtable
 	 * 
 	 * @param semTest - the SemanticTest object whose probabilities are being updated
 	 */
 	static void updateProbability(SemanticTest semTest){
 		double setWordCount = 0;
-		Iterator<Map.Entry<String, Pair>> it = semTest.wordList.entrySet().iterator();
+		Iterator<Map.Entry<String, FileInformation>> it = semTest.wordList.entrySet().iterator();
 		//While the Hashtable has remaining values, count the total number of words
 		while(it.hasNext()){
-			Map.Entry<String, Pair> value = it.next();
+			Map.Entry<String, FileInformation> value = it.next();
 			totalWordCount+=value.getValue().count;
 			setWordCount+=value.getValue().count;
 		}//end while - total number of words in all text files counted
@@ -29,8 +29,8 @@ public class NaiveBayesClassifier {
 		//Now computes the random probability that a given word appears in the data set
 		it = semTest.wordList.entrySet().iterator();
 		while(it.hasNext()){
-			Map.Entry<String, Pair> value = it.next();
-			Pair p = value.getValue();
+			Map.Entry<String, FileInformation> value = it.next();
+			FileInformation p = value.getValue();
 			p.rawProbabilty = ((double)p.count/setWordCount);
 			value.setValue(p);
 		}//end while - probabilities set
@@ -48,7 +48,7 @@ public class NaiveBayesClassifier {
 	 */
 	static Hashtable<String, ProbIdent> findProbabilityDiscrepencies(SemanticTest masterSet, SemanticTest checkSet, double epsilonValue){
 		Hashtable<String, ProbIdent> hTable = new Hashtable<String, ProbIdent>(); //the Hashtable to be returned
-		Iterator<Map.Entry<String, Pair>> checkSetIter = checkSet.wordList.entrySet().iterator();
+		Iterator<Map.Entry<String, FileInformation>> checkSetIter = checkSet.wordList.entrySet().iterator();
 		
 		if(epsilonValue > 1 || epsilonValue < 0){
 			System.err.println("Error: cannot check for a probability differential of: " + epsilonValue);
@@ -59,13 +59,13 @@ public class NaiveBayesClassifier {
 		//and checks the difference between the probability of a word appearing in a particular Hashtable
 		//against the probability of the word appearing in the entire dataset
 		while(checkSetIter.hasNext()){
-			Map.Entry<String, Pair> checkSetValue = checkSetIter.next();
+			Map.Entry<String, FileInformation> checkSetValue = checkSetIter.next();
 			//Just a check to make sure no errors in the passing of the masterSet and checkSet
 			if(masterSet.wordList.containsKey(checkSetValue.getKey())){
-				Pair checkSetPair = checkSetValue.getValue();
-				Pair masterSetPair = masterSet.wordList.get(checkSetValue.getKey()); //gets the Pair from the masterSet that corresponds to the key from the checkSet
-				if(checkSetPair.rawProbabilty - masterSetPair.rawProbabilty >= epsilonValue){
-					ProbIdent elem = new ProbIdent(masterSetPair.partOfSpeech, (checkSetPair.rawProbabilty - masterSetPair.rawProbabilty));
+				FileInformation checkSetFileInformation = checkSetValue.getValue();
+				FileInformation masterSetFileInformation = masterSet.wordList.get(checkSetValue.getKey()); //gets the FileInformation from the masterSet that corresponds to the key from the checkSet
+				if(checkSetFileInformation.rawProbabilty - masterSetFileInformation.rawProbabilty >= epsilonValue){
+					ProbIdent elem = new ProbIdent(masterSetFileInformation.partOfSpeech, (checkSetFileInformation.rawProbabilty - masterSetFileInformation.rawProbabilty));
 					hTable.put(checkSetValue.getKey(), elem);
 				}//end if - checks if the probability differential is greater than the passed epsilonValue, creates
 				//a new ProbIdent element and populates the hTable with it
