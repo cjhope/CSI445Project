@@ -9,8 +9,10 @@ import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Map;
 import java.util.Iterator;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -37,26 +39,62 @@ public class SemanticTest {
 		String probDiffFilePath = dir + "/data/results/probAnalysis"; //set up to use absolute path name
 		SemanticTest aggregatedFiles = new SemanticTest(); //creates the aggregatedFilesd SemanticTest object
 		
-		//System.out.println(dir);
+		
+		//Load a folder that contains the raw data files - checks if the file exists
+		//terminates program if input data can't be found
+		File inputFileFolder = new File(dir+"/data/rawData/fiveStars");
+		if(!inputFileFolder.exists()){
+			System.err.println("Failed to load raw data. Critical error, exiting");
+			return;
+		}//end if
+		
 		
 
+		System.out.println("Beginning formatting of raw data...");
+		File[] inputRawFiles = inputFileFolder.listFiles();
 		
-	
-		
-		//Runs the script from the command line to generate the formatted text files
-		//IMPORTANT - IF RUNNING THIS SCRIPT IN WINDOWS OS DISABLE THIS SECTION AND MANUALLY
-		//RUN THE TREE-TAGGER PROGRAM ON YOUR SAMPLE DATA
-		System.out.println("Generating formatted TreeTagger files from input text fies...");
-		String[] bashCommand = {"/bin/bash", dir + "/scriptTreeTagger.sh"};
-		Process p;
+		//Thread processes through a ThreadPoolExecutor, which allows a max number of concurrent threads to be set
+		//along with denoting a queue for handling processes that would exceed the allowed number of threads
+		//
+		//Creates a new executor service thread pool, allows:
+		//	Core Pool Size - 10
+		//	Max Pool Size - 50
+		//	Timeout - 10 minutes
+		//	Queue size - 40
+		ExecutorService formatDataThreadPool = new ThreadPoolExecutor(10, 20, 10*60, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(40));
 		try{
-			p = Runtime.getRuntime().exec(bashCommand);
-			p.waitFor();
-		}catch(Exception e){
-			System.err.println("Script failed to execute. Critical error, program terminated");
+			int i = 1;
+			
+			//Runs through all files in inputFileFolder, placing call to bash script on each iteration.
+			//The arguments passed to the script are
+			// 1. The input file
+			// 2. The output file
+			//Script calls the tree-tagger program on the input file, writes results to output file
+			
+			for(final File singleRawInputFile: inputRawFiles){
+				final String[] bashCommandToFormatData = {"/bin/bash", dir+"/singleFileTreeTaggerScript.sh", singleRawInputFile.getPath(), dir + "/data/formattedData/formattedData" + i + ".txt"};
+				i++;
+				formatDataThreadPool.execute(new Runnable(){
+					public void run(){
+						Process p;
+						try {
+							p = Runtime.getRuntime().exec(bashCommandToFormatData);
+							p.waitFor();
+						} catch (IOException | InterruptedException e) {
+							System.err.println("Error during execution of bash script");
+						}
+					}
+				});
+				
+			}//end for
+		} catch (Exception e){
+			System.err.println("Failed to format data - exiting.");
 			return;
 		}
-		// end script call - formatted text files prepped for processing
+		formatDataThreadPool.shutdown(); //shuts down the thread pool - prevent additional threads from being added
+		formatDataThreadPool.awaitTermination(1, TimeUnit.MINUTES); //Awaits termination of threads or 1 minute, whichever comes first
+		
+
 		
 		File folder = new File(inputFilePath);  //gets the folder name
 		//Checks if the folder exists - if not exits program, because there isn't data to analyze

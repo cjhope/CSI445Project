@@ -6,10 +6,11 @@ FILES=$DIR/data/rawData/fiveStars/*
 OUTPUT=$DIR/data/results/fiveStars/
 i=1
 
-for f in $FILES
+for f in $FILES;
 do
 echo $f
 cat $f | /Users/cjh/TreeTagger/cmd/tree-tagger-english > $DIR/data/formattedData/myResultFile$i.txt
 let i++
 
 done
+
