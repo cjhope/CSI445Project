@@ -52,8 +52,8 @@ public class SemanticTest {
 
 		System.out.println("Beginning formatting of raw data...");
 		File[] inputRawFiles = inputFileFolder.listFiles();
-		
-		//Thread processes through a ThreadPoolExecutor, which allows a max number of concurrent threads to be set
+
+		//Thread processes run via a ThreadPoolExecutor, which allows a max number of concurrent threads to be set
 		//along with denoting a queue for handling processes that would exceed the allowed number of threads
 		//
 		//Creates a new executor service thread pool, allows:
@@ -93,24 +93,24 @@ public class SemanticTest {
 		}
 		formatDataThreadPool.shutdown(); //shuts down the thread pool - prevent additional threads from being added
 		formatDataThreadPool.awaitTermination(1, TimeUnit.MINUTES); //Awaits termination of threads or 1 minute, whichever comes first
-		
 
 		
-		File folder = new File(inputFilePath);  //gets the folder name
+
+		File formattedFileFolder = new File(inputFilePath);  //gets the folder name
 		//Checks if the folder exists - if not exits program, because there isn't data to analyze
-		if(!folder.exists()){
+		if(!formattedFileFolder.exists()){
 			System.err.println("No input files to analyze. Critical error: exiting.");
 			return;
 		}//end if
 		//Folder exists, so get all files in it
-		File[] listOfFiles = folder.listFiles();  //gets all files in the data folder
+		File[] listOfFormattedFiles = formattedFileFolder.listFiles();  //gets all files in the data folder
 		
 		//Create array the size of the number of input files
-		SemanticTest[] collection = new SemanticTest[listOfFiles.length];
+		SemanticTest[] collection = new SemanticTest[listOfFormattedFiles.length];
 		
 		//Assign the appropriate files to the appropriate SemanticTest object, to allow for threading
-		for(int i = 0; i < listOfFiles.length; i++)
-			collection[i] = new SemanticTest(listOfFiles[i]);
+		for(int i = 0; i < listOfFormattedFiles.length; i++)
+			collection[i] = new SemanticTest(listOfFormattedFiles[i]);
 			
 		System.out.println("Beginning collation of word frequency data...");
 		System.out.println("Parsing Hashtable creation to threads...");
@@ -120,10 +120,16 @@ public class SemanticTest {
 		//and monitor when it is complete.  The threading service will wait until all threads have completed
 		//(or 1 minute - whichever comes first) before moving on to the next set of tasks.  Waiting is an essential
 		//step taken to ensure the results are deterministic
-		ExecutorService es = Executors.newCachedThreadPool();
-		for(int i = 0; i < listOfFiles.length; i++){
+		//
+		//Creates a new executor service thread pool, allows:
+		//	Core Pool Size - 10
+		//	Max Pool Size - 50
+		//	Timeout - 10 minutes
+		//	Queue size - 40
+		ExecutorService createHashTableThreadPool = new ThreadPoolExecutor(10, 20, 10*60, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(40));
+		for(int i = 0; i < listOfFormattedFiles.length; i++){
 				for(final SemanticTest builder: collection){
-						es.execute(new Runnable(){
+						createHashTableThreadPool.execute(new Runnable(){
 							public void run (){
 								try {
 									builder.createHashtable();
@@ -134,8 +140,8 @@ public class SemanticTest {
 						});
 					}//end for -- all individual SemanticTest object Hashtables created and populated
 		}//end for -- executor service done queuing threads
-		es.shutdown(); //prevent additional threads from being queued
-		es.awaitTermination(1, TimeUnit.MINUTES); //Wait for 1 minute, or until all threads have completed
+		createHashTableThreadPool.shutdown(); //prevent additional threads from being queued
+		createHashTableThreadPool.awaitTermination(1, TimeUnit.MINUTES); //Wait for 1 minute, or until all threads have completed
 		
 		System.out.println("Updating raw probability data for writing to individual files...");
 		
